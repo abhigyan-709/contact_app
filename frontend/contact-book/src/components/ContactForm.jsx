@@ -57,6 +57,17 @@ import {
 
 const countryCodes = ["+91", "+1", "+44", "+61", "+81"];
 
+const emailDomainCountryMap = {
+  ".in": "+91",
+  ".com.au": "+61",
+  ".co.uk": "+44",
+  ".uk": "+44",
+  ".jp": "+81",
+  ".us": "+1",
+  ".ca": "+1",
+  ".com": "+1", // fallback
+};
+
 const ContactForm = ({ onSubmit, editing }) => {
   const [form, setForm] = useState({
     name: "",
@@ -93,8 +104,16 @@ const ContactForm = ({ onSubmit, editing }) => {
   };
 
   const handleChange = (field, value) => {
-    setForm({ ...form, [field]: value });
-    setErrors({ ...errors, [field]: "" });
+    if (field === "email") {
+      const domain = value.substring(value.lastIndexOf("."));
+      const detectedCode = emailDomainCountryMap[domain.toLowerCase()];
+      if (detectedCode) {
+        setForm((prev) => ({ ...prev, country_code: detectedCode }));
+      }
+    }
+
+    setForm((prev) => ({ ...prev, [field]: value }));
+    setErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
   const handleSubmit = (e) => {
@@ -145,7 +164,10 @@ const ContactForm = ({ onSubmit, editing }) => {
             maxLength: 10,
           }}
           error={!!errors.phone}
-          helperText={errors.phone}
+          helperText={
+            errors.phone ||
+            `Phone must be exactly 10 digits (${form.phone.length}/10)`
+          }
         />
 
         <TextField
