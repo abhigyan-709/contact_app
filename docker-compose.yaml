@@ -1,0 +1,21 @@
+version: '3'
+
+services:
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      - MONGO_URI=mongodb://host.docker.internal:27017
+      - DB_NAME=contact_db
+
+  frontend:
+    build:
+      context: ./frontend/contact-book
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend

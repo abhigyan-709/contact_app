@@ -1,0 +1,45 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.so
+
+# Python virtual environment
+venv/
+ENV/
+env/
+
+# dotenv environment variables
+*.env
+
+# FastAPI logs / cache
+*.log
+*.sqlite3
+
+# Node modules for frontend (massive size, should not be committed)
+frontend/contact-book/node_modules/
+
+# Yarn lock file (optional to ignore if you want clean installs each time)
+# yarn.lock
+
+# Build output (if you build React before deployment)
+frontend/contact-book/build/
+
+# IDEs / OS files
+.DS_Store
+*.swp
+.vscode/
+.idea/
+
+# Docker
+*.pid
+*.bak
+*.tar
+*.img
+*.container
+*.local
+
+# Logs
+*.log
+
+# Ignore docker-compose override files (optional)
+docker-compose.override.yaml
