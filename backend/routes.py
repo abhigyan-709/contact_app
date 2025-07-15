@@ -11,6 +11,10 @@ from fpdf import FPDF
 from fastapi.responses import StreamingResponse
 from fpdf import FPDF
 from io import BytesIO
+from fastapi import File, UploadFile, HTTPException
+import pandas as pd
+import io
+import re
 
 router = APIRouter()
 
@@ -88,3 +92,47 @@ def export_pdf():
     buffer.seek(0)
 
     return StreamingResponse(buffer, media_type="application/pdf", headers={"Content-Disposition": "attachment; filename=contacts.pdf"})
+
+@router.post("/contacts/import")
+async def import_contacts(file: UploadFile = File(...)):
+    if not file.filename.endswith((".csv", ".xlsx")):
+        raise HTTPException(status_code=400, detail="Only CSV or XLSX files allowed")
+
+    # Read file into DataFrame
+    contents = await file.read()
+    try:
+        if file.filename.endswith(".csv"):
+            df = pd.read_csv(io.BytesIO(contents))
+        else:
+            df = pd.read_excel(io.BytesIO(contents))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"File parsing error: {str(e)}")
+
+    required_fields = {"name", "email", "phone", "country_code"}
+    if not required_fields.issubset(df.columns):
+        raise HTTPException(status_code=400, detail="Missing required columns")
+
+    # Validate and collect valid entries
+    valid_contacts = []
+    for _, row in df.iterrows():
+        name = str(row["name"]).strip()
+        email = str(row["email"]).strip()
+        phone = str(row["phone"]).strip()
+        country_code = str(row["country_code"]).strip()
+
+        if not name or not re.match(r"[^@]+@[^@]+\.[^@]+", email) or not phone.isdigit():
+            continue  # skip invalid
+
+        contact = {
+            "name": name,
+            "email": email,
+            "phone": phone,
+            "country_code": country_code
+        }
+        valid_contacts.append(contact)
+
+    if not valid_contacts:
+        raise HTTPException(status_code=400, detail="No valid contacts found")
+
+    result = contact_collection.insert_many(valid_contacts)
+    return {"inserted": len(result.inserted_ids)}

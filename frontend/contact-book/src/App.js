@@ -2,7 +2,7 @@
 // import axios from "axios";
 // import ContactForm from "./components/ContactForm";
 // import ContactList from "./components/ContactList";
-// import { TextField } from "@mui/material";
+// import { TextField, Button, Stack, Typography } from "@mui/material";
 // import debounce from "lodash/debounce";
 
 // const API = "http://localhost:8000/contacts";
@@ -58,9 +58,15 @@
 //     setEditing(contact);
 //   };
 
+//   const handleExport = (type) => {
+//     window.open(`http://localhost:8000/contacts/export/${type}`, "_blank");
+//   };
+
 //   return (
 //     <div style={{ padding: "2rem" }}>
-//       <h1>Contact Book</h1>
+//       <Typography variant="h4" gutterBottom>
+//         Contact Book
+//       </Typography>
 
 //       <TextField
 //         label="Search"
@@ -70,11 +76,31 @@
 //         style={{ marginBottom: 20 }}
 //       />
 
-//       <h3>{editing ? "Edit Contact" : "Add New Contact"}</h3>
+//       <Stack direction="row" spacing={2} style={{ marginBottom: 20 }}>
+//         <Button variant="outlined" onClick={() => handleExport("csv")}>
+//           Export CSV
+//         </Button>
+//         <Button variant="outlined" onClick={() => handleExport("xlsx")}>
+//           Export XLSX
+//         </Button>
+//         <Button variant="outlined" onClick={() => handleExport("pdf")}>
+//           Export PDF
+//         </Button>
+//       </Stack>
+
+//       <Typography variant="h6" gutterBottom>
+//         {editing ? "Edit Contact" : "Add New Contact"}
+//       </Typography>
 //       <ContactForm onSubmit={saveContact} editing={editing} />
 
-//       <h3 style={{ marginTop: "2rem" }}>Saved Contacts</h3>
-//       <ContactList contacts={contacts} onEdit={editContact} onDelete={deleteContact} />
+//       <Typography variant="h6" style={{ marginTop: "2rem" }}>
+//         Saved Contacts
+//       </Typography>
+//       <ContactList
+//         contacts={contacts}
+//         onEdit={editContact}
+//         onDelete={deleteContact}
+//       />
 //     </div>
 //   );
 // }
@@ -85,7 +111,14 @@ import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import ContactForm from "./components/ContactForm";
 import ContactList from "./components/ContactList";
-import { TextField, Button, Stack, Typography } from "@mui/material";
+import {
+  TextField,
+  Button,
+  Stack,
+  Typography,
+  Box,
+  InputLabel,
+} from "@mui/material";
 import debounce from "lodash/debounce";
 
 const API = "http://localhost:8000/contacts";
@@ -110,7 +143,6 @@ function App() {
     setContacts(res.data);
   };
 
-  // Debounced search to avoid API spamming
   const debouncedSearch = useCallback(debounce(searchContacts, 300), []);
 
   useEffect(() => {
@@ -145,8 +177,27 @@ function App() {
     window.open(`http://localhost:8000/contacts/export/${type}`, "_blank");
   };
 
+  const handleImport = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await axios.post(`${API}/import`, formData);
+      alert(`${res.data.inserted} contacts imported successfully`);
+      fetchContacts();
+    } catch (error) {
+      alert(
+        error?.response?.data?.detail ||
+          "Error importing file. Please check file format."
+      );
+    }
+  };
+
   return (
-    <div style={{ padding: "2rem" }}>
+    <Box sx={{ padding: 4 }}>
       <Typography variant="h4" gutterBottom>
         Contact Book
       </Typography>
@@ -156,10 +207,10 @@ function App() {
         fullWidth
         value={searchQuery}
         onChange={handleSearch}
-        style={{ marginBottom: 20 }}
+        sx={{ mb: 3 }}
       />
 
-      <Stack direction="row" spacing={2} style={{ marginBottom: 20 }}>
+      <Stack direction="row" spacing={2} sx={{ mb: 3 }} alignItems="center">
         <Button variant="outlined" onClick={() => handleExport("csv")}>
           Export CSV
         </Button>
@@ -169,6 +220,15 @@ function App() {
         <Button variant="outlined" onClick={() => handleExport("pdf")}>
           Export PDF
         </Button>
+        <Button variant="contained" component="label">
+          Import CSV/XLSX
+          <input
+            type="file"
+            accept=".csv, .xlsx"
+            hidden
+            onChange={handleImport}
+          />
+        </Button>
       </Stack>
 
       <Typography variant="h6" gutterBottom>
@@ -176,7 +236,7 @@ function App() {
       </Typography>
       <ContactForm onSubmit={saveContact} editing={editing} />
 
-      <Typography variant="h6" style={{ marginTop: "2rem" }}>
+      <Typography variant="h6" sx={{ mt: 4 }}>
         Saved Contacts
       </Typography>
       <ContactList
@@ -184,7 +244,7 @@ function App() {
         onEdit={editContact}
         onDelete={deleteContact}
       />
-    </div>
+    </Box>
   );
 }
 

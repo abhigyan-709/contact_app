@@ -1,0 +1,6 @@
+name,country_code,phone,email
+Alice,+1,1234567890,alice@example.com
+Bob,+91,9876543210,bob@example.com
+Charlie,+44,7712345678,charlie@example.co.uk
+Diana,+61,412345678,diana@example.com.au
+Ethan,+81,9012345678,ethan@example.jp
