@@ -1,72 +1,11 @@
-// import React, { useEffect, useState } from "react";
-// import { TextField, Button } from "@mui/material";
-
-// const initialState = {
-//   name: "",
-//   country_code: "",
-//   phone: "",
-//   email: "",
-// };
-
-// const ContactForm = ({ onSubmit, editing }) => {
-//   const [form, setForm] = useState(initialState);
-
-//   useEffect(() => {
-//     if (editing) {
-//       setForm(editing);
-//     } else {
-//       setForm(initialState);
-//     }
-//   }, [editing]);
-
-//   const handleChange = (e) => {
-//     setForm({ ...form, [e.target.name]: e.target.value });
-//   };
-
-//   const handleSubmit = async (e) => {
-//     e.preventDefault();
-//     await onSubmit(form);
-//     setForm(initialState);
-//   };
-
-//   return (
-//     <form onSubmit={handleSubmit}>
-//       <TextField fullWidth label="Name" name="name" value={form.name} onChange={handleChange} style={{ marginBottom: 10 }} />
-//       <TextField fullWidth label="Country Code" name="country_code" value={form.country_code} onChange={handleChange} style={{ marginBottom: 10 }} />
-//       <TextField fullWidth label="Phone" name="phone" value={form.phone} onChange={handleChange} style={{ marginBottom: 10 }} />
-//       <TextField fullWidth label="Email" name="email" value={form.email} onChange={handleChange} style={{ marginBottom: 10 }} />
-//       <Button variant="contained" type="submit">
-//         {editing ? "UPDATE CONTACT" : "SAVE CONTACT"}
-//       </Button>
-//     </form>
-//   );
-// };
-
-// export default ContactForm;
-
 import React, { useEffect, useState } from "react";
 import {
   TextField,
   Button,
   Stack,
-  MenuItem,
-  Select,
-  InputLabel,
-  FormControl,
 } from "@mui/material";
-
-const countryCodes = ["+91", "+1", "+44", "+61", "+81"];
-
-const emailDomainCountryMap = {
-  ".in": "+91",
-  ".com.au": "+61",
-  ".co.uk": "+44",
-  ".uk": "+44",
-  ".jp": "+81",
-  ".us": "+1",
-  ".ca": "+1",
-  ".com": "+1", // fallback
-};
+import PhoneInput from "react-phone-input-2";
+import 'react-phone-input-2/lib/material.css'; // use material style
 
 const ContactForm = ({ onSubmit, editing }) => {
   const [form, setForm] = useState({
@@ -78,8 +17,11 @@ const ContactForm = ({ onSubmit, editing }) => {
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
-    if (editing) setForm(editing);
-    else reset();
+    if (editing) {
+      setForm(editing);
+    } else {
+      reset();
+    }
   }, [editing]);
 
   const reset = () =>
@@ -91,29 +33,24 @@ const ContactForm = ({ onSubmit, editing }) => {
     });
 
   const validate = () => {
-    let errs = {};
+    const errs = {};
     if (!form.name.trim()) errs.name = "Name is required";
-    if (!form.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/))
-      errs.email = "Invalid email";
-    if (!form.phone.match(/^\d{10}$/))
-      errs.phone = "Phone must be exactly 10 digits";
-    if (!form.country_code.match(/^\+\d{1,4}$/))
-      errs.country_code = "Invalid country code";
+    if (!form.phone.match(/^\d{10}$/)) errs.phone = "Phone must be 10 digits";
+
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
 
   const handleChange = (field, value) => {
-    if (field === "email") {
-      const domain = value.substring(value.lastIndexOf("."));
-      const detectedCode = emailDomainCountryMap[domain.toLowerCase()];
-      if (detectedCode) {
-        setForm((prev) => ({ ...prev, country_code: detectedCode }));
-      }
-    }
-
     setForm((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => ({ ...prev, [field]: "" }));
+  };
+
+  const handlePhoneChange = (value, data, event, formattedValue) => {
+    // extract country code and number
+    const phoneWithoutCode = value.replace(data.dialCode, "");
+    handleChange("country_code", `+${data.dialCode}`);
+    handleChange("phone", phoneWithoutCode);
   };
 
   const handleSubmit = (e) => {
@@ -136,47 +73,26 @@ const ContactForm = ({ onSubmit, editing }) => {
           helperText={errors.name}
         />
 
-        <FormControl fullWidth error={!!errors.country_code}>
-          <InputLabel>Country Code</InputLabel>
-          <Select
-            value={form.country_code}
-            label="Country Code"
-            onChange={(e) => handleChange("country_code", e.target.value)}
-          >
-            {countryCodes.map((code) => (
-              <MenuItem key={code} value={code}>
-                {code}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        <TextField
-          label="Phone"
-          fullWidth
-          value={form.phone}
-          onChange={(e) => {
-            const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, 10);
-            handleChange("phone", digitsOnly);
-          }}
+        <PhoneInput
+          country={'in'}
+          value={`${form.country_code.replace("+", "")}${form.phone}`}
+          onChange={handlePhoneChange}
+          inputStyle={{ width: '100%' }}
           inputProps={{
-            inputMode: "numeric",
-            maxLength: 10,
+            name: 'phone',
+            required: true,
+            autoFocus: false
           }}
-          error={!!errors.phone}
-          helperText={
-            errors.phone ||
-            `Phone must be exactly 10 digits (${form.phone.length}/10)`
-          }
         />
+        {errors.phone && (
+          <span style={{ color: 'red', fontSize: '0.8rem' }}>{errors.phone}</span>
+        )}
 
         <TextField
           label="Email"
           fullWidth
           value={form.email}
           onChange={(e) => handleChange("email", e.target.value)}
-          error={!!errors.email}
-          helperText={errors.email}
         />
 
         <Button variant="contained" type="submit">
