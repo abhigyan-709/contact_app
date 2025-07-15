@@ -2,7 +2,14 @@
 // import axios from "axios";
 // import ContactForm from "./components/ContactForm";
 // import ContactList from "./components/ContactList";
-// import { TextField, Button, Stack, Typography } from "@mui/material";
+// import {
+//   TextField,
+//   Button,
+//   Stack,
+//   Typography,
+//   Box,
+//   InputLabel,
+// } from "@mui/material";
 // import debounce from "lodash/debounce";
 
 // const API = "http://localhost:8000/contacts";
@@ -27,7 +34,6 @@
 //     setContacts(res.data);
 //   };
 
-//   // Debounced search to avoid API spamming
 //   const debouncedSearch = useCallback(debounce(searchContacts, 300), []);
 
 //   useEffect(() => {
@@ -62,8 +68,27 @@
 //     window.open(`http://localhost:8000/contacts/export/${type}`, "_blank");
 //   };
 
+//   const handleImport = async (e) => {
+//     const file = e.target.files[0];
+//     if (!file) return;
+
+//     const formData = new FormData();
+//     formData.append("file", file);
+
+//     try {
+//       const res = await axios.post(`${API}/import`, formData);
+//       alert(`${res.data.inserted} contacts imported successfully`);
+//       fetchContacts();
+//     } catch (error) {
+//       alert(
+//         error?.response?.data?.detail ||
+//           "Error importing file. Please check file format."
+//       );
+//     }
+//   };
+
 //   return (
-//     <div style={{ padding: "2rem" }}>
+//     <Box sx={{ padding: 4 }}>
 //       <Typography variant="h4" gutterBottom>
 //         Contact Book
 //       </Typography>
@@ -73,10 +98,10 @@
 //         fullWidth
 //         value={searchQuery}
 //         onChange={handleSearch}
-//         style={{ marginBottom: 20 }}
+//         sx={{ mb: 3 }}
 //       />
 
-//       <Stack direction="row" spacing={2} style={{ marginBottom: 20 }}>
+//       <Stack direction="row" spacing={2} sx={{ mb: 3 }} alignItems="center">
 //         <Button variant="outlined" onClick={() => handleExport("csv")}>
 //           Export CSV
 //         </Button>
@@ -86,6 +111,15 @@
 //         <Button variant="outlined" onClick={() => handleExport("pdf")}>
 //           Export PDF
 //         </Button>
+//         <Button variant="contained" component="label">
+//           Import CSV/XLSX
+//           <input
+//             type="file"
+//             accept=".csv, .xlsx"
+//             hidden
+//             onChange={handleImport}
+//           />
+//         </Button>
 //       </Stack>
 
 //       <Typography variant="h6" gutterBottom>
@@ -93,7 +127,7 @@
 //       </Typography>
 //       <ContactForm onSubmit={saveContact} editing={editing} />
 
-//       <Typography variant="h6" style={{ marginTop: "2rem" }}>
+//       <Typography variant="h6" sx={{ mt: 4 }}>
 //         Saved Contacts
 //       </Typography>
 //       <ContactList
@@ -101,7 +135,7 @@
 //         onEdit={editContact}
 //         onDelete={deleteContact}
 //       />
-//     </div>
+//     </Box>
 //   );
 // }
 
@@ -110,14 +144,13 @@
 import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import ContactForm from "./components/ContactForm";
-import ContactList from "./components/ContactList";
+import ContactTable from "./components/ContactTable"; // ✅ use new table view
 import {
   TextField,
   Button,
   Stack,
   Typography,
   Box,
-  InputLabel,
 } from "@mui/material";
 import debounce from "lodash/debounce";
 
@@ -236,13 +269,10 @@ function App() {
       </Typography>
       <ContactForm onSubmit={saveContact} editing={editing} />
 
-      <Typography variant="h6" sx={{ mt: 4 }}>
-        Saved Contacts
-      </Typography>
-      <ContactList
+      <ContactTable
         contacts={contacts}
         onEdit={editContact}
-        onDelete={deleteContact}
+        onDelete={(contact) => deleteContact(contact._id)}
       />
     </Box>
   );
