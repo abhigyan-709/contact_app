@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from bson import ObjectId
-
+from fastapi import Query
+from database import contact_collection
 from models import Contact
 from crud import create_contact, get_contacts, update_contact, delete_contact
 
@@ -22,3 +23,16 @@ def edit_contact(contact_id: str, contact: Contact):
 @router.delete("/contacts/{contact_id}")
 def remove_contact(contact_id: str):
     return delete_contact(contact_id)
+
+
+@router.get("/contacts/search")
+def search_contacts(query: str = Query(...)):
+    results = contact_collection.find({
+        "$or": [
+            {"name": {"$regex": query, "$options": "i"}},
+            {"email": {"$regex": query, "$options": "i"}},
+            {"phone": {"$regex": query, "$options": "i"}},
+        ]
+    })
+
+    return [{**c, "_id": str(c["_id"])} for c in results]
