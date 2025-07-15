@@ -15,6 +15,7 @@ from fastapi import File, UploadFile, HTTPException
 import pandas as pd
 import io
 import re
+from crud import bulk_insert_contacts
 
 router = APIRouter()
 
@@ -93,46 +94,107 @@ def export_pdf():
 
     return StreamingResponse(buffer, media_type="application/pdf", headers={"Content-Disposition": "attachment; filename=contacts.pdf"})
 
+# @router.post("/contacts/import")
+# async def import_contacts(file: UploadFile = File(...)):
+#     if not file.filename.endswith((".csv", ".xlsx")):
+#         raise HTTPException(status_code=400, detail="Only CSV or XLSX files allowed")
+
+#     # Read file into DataFrame
+#     contents = await file.read()
+#     try:
+#         if file.filename.endswith(".csv"):
+#             df = pd.read_csv(io.BytesIO(contents))
+#         else:
+#             df = pd.read_excel(io.BytesIO(contents))
+#     except Exception as e:
+#         raise HTTPException(status_code=400, detail=f"File parsing error: {str(e)}")
+
+#     required_fields = {"name", "email", "phone", "country_code"}
+#     if not required_fields.issubset(df.columns):
+#         raise HTTPException(status_code=400, detail="Missing required columns")
+
+#     # Validate and collect valid entries
+#     valid_contacts = []
+#     for _, row in df.iterrows():
+#         name = str(row["name"]).strip()
+#         email = str(row["email"]).strip()
+#         phone = str(row["phone"]).strip()
+#         country_code = str(row["country_code"]).strip()
+
+#         if not name or not re.match(r"[^@]+@[^@]+\.[^@]+", email) or not phone.isdigit():
+#             continue  # skip invalid
+
+#         contact = {
+#             "name": name,
+#             "email": email,
+#             "phone": phone,
+#             "country_code": country_code
+#         }
+#         valid_contacts.append(contact)
+
+#     if not valid_contacts:
+#         raise HTTPException(status_code=400, detail="No valid contacts found")
+
+#     result = contact_collection.insert_many(valid_contacts)
+#     return {"inserted": len(result.inserted_ids)}
+
 @router.post("/contacts/import")
 async def import_contacts(file: UploadFile = File(...)):
     if not file.filename.endswith((".csv", ".xlsx")):
-        raise HTTPException(status_code=400, detail="Only CSV or XLSX files allowed")
+        raise HTTPException(status_code=400, detail="File must be CSV or XLSX")
 
-    # Read file into DataFrame
     contents = await file.read()
+
     try:
         if file.filename.endswith(".csv"):
             df = pd.read_csv(io.BytesIO(contents))
         else:
             df = pd.read_excel(io.BytesIO(contents))
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"File parsing error: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Failed to read file: {str(e)}")
 
-    required_fields = {"name", "email", "phone", "country_code"}
-    if not required_fields.issubset(df.columns):
-        raise HTTPException(status_code=400, detail="Missing required columns")
+    if df.empty:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
 
-    # Validate and collect valid entries
-    valid_contacts = []
-    for _, row in df.iterrows():
-        name = str(row["name"]).strip()
-        email = str(row["email"]).strip()
-        phone = str(row["phone"]).strip()
-        country_code = str(row["country_code"]).strip()
+    required_cols = {"name", "country_code", "phone", "email"}
+    missing_cols = required_cols - set(df.columns)
+    if missing_cols:
+        raise HTTPException(status_code=400, detail=f"Missing required columns: {missing_cols}")
 
-        if not name or not re.match(r"[^@]+@[^@]+\.[^@]+", email) or not phone.isdigit():
-            continue  # skip invalid
+    inserted = 0
+    skipped = []
 
-        contact = {
-            "name": name,
-            "email": email,
-            "phone": phone,
-            "country_code": country_code
-        }
-        valid_contacts.append(contact)
+    for idx, row in df.iterrows():
+        try:
+            contact_data = {
+                "name": str(row["name"]).strip(),
+                "country_code": str(row["country_code"]).strip(),
+                "phone": str(row["phone"]).strip(),
+                "email": str(row["email"]).strip()
+            }
 
-    if not valid_contacts:
-        raise HTTPException(status_code=400, detail="No valid contacts found")
+            validated = Contact(**contact_data)
 
-    result = contact_collection.insert_many(valid_contacts)
-    return {"inserted": len(result.inserted_ids)}
+            # Uniqueness check
+            exists = contact_collection.find_one({
+                "$or": [
+                    {"email": validated.email},
+                    {"phone": validated.phone}
+                ]
+            })
+
+            if exists:
+                skipped.append({"row": idx + 2, "reason": "Duplicate email/phone"})
+                continue
+
+            contact_collection.insert_one(validated.dict())
+            inserted += 1
+
+        except Exception as e:
+            skipped.append({"row": idx + 2, "reason": str(e)})
+
+    return {
+        "inserted": inserted,
+        "skipped": skipped,
+        "message": f"{inserted} contacts added, {len(skipped)} skipped."
+    }

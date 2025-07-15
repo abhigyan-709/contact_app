@@ -1,0 +1,7 @@
+name,country_code,phone,email
+Alice,123,1234567890,alice[at]example.com      
+Bob,+91,98765,bob@@example.com                 
+Charlie,+abc,7712345678,charlie@example.co.uk  
+Diana,+61,abcdef1234,diana@example             
+Ethan,81,9012345678,                           
+FakeUser,+44,1234567890,alice@example.com      
